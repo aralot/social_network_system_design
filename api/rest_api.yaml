@@ -1,0 +1,372 @@
+openapi: 3.1.0
+info:
+  title: Social Network API
+  version: 0.1.0
+  description: |
+    API для публикации постов и работы с комментариями/лентой.
+    В этой версии описаны 4 endpoint-а: публикация поста, чтение ленты,
+    добавление комментария и чтение комментариев.
+servers:
+  - url: https://api.example.com
+    description: Placeholder server
+security:
+  - bearerAuth: []
+tags:
+  - name: posts
+  - name: feed
+  - name: comments
+
+paths:
+  /publish:
+    post:
+      tags: [posts]
+      summary: Публикация поста
+      description: Создает пост с текстом и изображением.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - content
+                - image
+              properties:
+                content:
+                  type: string
+                  maxLength: 500
+                  description: Текст поста (до 500 символов).
+                image:
+                  type: string
+                  format: binary
+                  description: Изображение поста (до 100 MB).
+      responses:
+        '200':
+          description: Пост опубликован.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /feed:
+    get:
+      tags: [feed]
+      summary: Чтение ленты постов
+      description: |
+        По умолчанию возвращает ленту постов пользователей, на которых подписан текущий пользователь.
+        Если передан popularPlaceId, возвращает посты, опубликованные рядом с этим местом.
+      parameters:
+        - name: offset
+          in: query
+          required: true
+          description: Смещение для пагинации.
+          schema:
+            type: integer
+            minimum: 0
+          example: 0
+        - name: limit
+          in: query
+          required: false
+          description: Размер страницы.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: popularPlaceId
+          in: query
+          required: false
+          description: ID популярного места для альтернативной выборки ленты.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Успешный ответ с лентой постов.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /comment:
+    post:
+      tags: [comments]
+      summary: Добавление комментария
+      description: Добавляет комментарий к посту.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommentRequest'
+      responses:
+        '200':
+          description: Комментарий успешно добавлен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Comment added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /comments:
+    get:
+      tags: [comments]
+      summary: Чтение комментариев под постом
+      parameters:
+        - name: postId
+          in: query
+          required: true
+          description: ID поста.
+          schema:
+            type: integer
+            minimum: 1
+        - name: offset
+          in: query
+          required: true
+          description: Смещение для пагинации.
+          schema:
+            type: integer
+            minimum: 0
+          example: 0
+        - name: limit
+          in: query
+          required: false
+          description: Размер страницы.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+      responses:
+        '200':
+          description: Успешный ответ с комментариями.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Placeholder-схема. Механика аутентификации намеренно не детализируется.
+
+  responses:
+    BadRequest:
+      description: Ошибка в параметрах запроса.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: BAD_REQUEST
+            message: Invalid request parameters
+    Unauthorized:
+      description: Пользователь не авторизован.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: Authentication required
+    NotFound:
+      description: Ресурс не найден.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: Resource not found
+    ValidationError:
+      description: Ошибка бизнес-валидации.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: Comment length must be <= 2500
+            details:
+              field: content
+              maxLength: 2500
+    PayloadTooLarge:
+      description: Размер загружаемого файла превышает лимит.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: PAYLOAD_TOO_LARGE
+            message: Image size must be <= 100 MB
+    UnsupportedMediaType:
+      description: Неподдерживаемый content-type.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNSUPPORTED_MEDIA_TYPE
+            message: Expected multipart/form-data
+    InternalError:
+      description: Внутренняя ошибка сервера.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INTERNAL_ERROR
+            message: Unexpected server error
+
+  schemas:
+    AddCommentRequest:
+      type: object
+      required:
+        - postId
+        - content
+      properties:
+        postId:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2500
+
+    SuccessResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для клиента.
+        details:
+          type: object
+          additionalProperties: true
+          description: Дополнительные детали ошибки.
+
+    FeedItem:
+      type: object
+      required:
+        - id
+        - content
+        - imageUrl
+        - numberOfComments
+        - numberOfLikes
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+          description: URL изображения. Всегда присутствует, так как пост без изображения не создается.
+        numberOfComments:
+          type: integer
+          minimum: 0
+        numberOfLikes:
+          type: integer
+          minimum: 0
+
+    FeedPage:
+      type: object
+      required:
+        - items
+        - nextOffset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedItem'
+        nextOffset:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          description: Следующее смещение; null, если больше данных нет.
+
+    CommentItem:
+      type: object
+      required:
+        - content
+        - authorName
+        - authorId
+      properties:
+        content:
+          type: string
+        authorName:
+          type: string
+        authorId:
+          type: integer
+          minimum: 1
+
+    CommentPage:
+      type: object
+      required:
+        - items
+        - nextOffset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentItem'
+        nextOffset:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          description: Следующее смещение; null, если больше данных нет.

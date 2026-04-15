@@ -1,0 +1,37 @@
+Table posts {
+  id integer
+  image_id text
+  reactions integer
+  title text
+  content text
+  created_at timestamp
+  user_id integer
+}
+
+Table comments {
+  id integer
+  content text
+  created_at timestamp
+  post_id integer
+  user_id integer
+}
+
+Table images {
+  id integer
+  created_at timestamp
+  url text
+}
+
+Table users {
+  id integer
+  name text
+  created_at timestamp
+}
+
+Ref: "posts"."image_id" < "images"."id"
+
+Ref: "users"."id" < "posts"."user_id"
+
+Ref: "users"."id" < "comments"."user_id"
+
+Ref: "posts"."id" < "comments"."post_id"

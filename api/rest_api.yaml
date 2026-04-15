@@ -1,0 +1,649 @@
+openapi: 3.1.0
+info:
+  title: Social Network API
+  version: 0.1.0
+  description: |
+    API для публикации постов и работы с комментариями, лайками, media и подписками.
+    В этой версии описаны endpoint-ы для создания и чтения постов,
+    загрузки и получения media, управления лайками, комментариями и подписками.
+servers:
+  - url: https://api.example.com
+    description: Placeholder server
+security:
+  - bearerAuth: []
+tags:
+  - name: posts
+  - name: comments
+  - name: likes
+  - name: media
+  - name: subscriptions
+
+paths:
+  /posts:
+    post:
+      tags: [posts]
+      summary: Публикация поста
+      description: Создает пост с текстом, ранее загруженным изображением и гео.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      responses:
+        '200':
+          description: Пост опубликован.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Post published
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [posts]
+      summary: Чтение списка постов
+      description: |
+        По умолчанию возвращает ленту постов пользователей, на которых подписан текущий пользователь.
+        Если передан popularPlaceId, возвращает посты, опубликованные рядом с этим местом.
+      parameters:
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/PopularPlaceId'
+      responses:
+        '200':
+          description: Успешный ответ со списком постов.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /posts/{post_id}/comments:
+    post:
+      tags: [comments]
+      summary: Добавление комментария
+      description: Добавляет комментарий к посту.
+      parameters:
+        - $ref: '#/components/parameters/PostIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '200':
+          description: Комментарий успешно добавлен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Comment added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [comments]
+      summary: Чтение комментариев под постом
+      parameters:
+        - $ref: '#/components/parameters/PostIdPath'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Успешный ответ с комментариями.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /posts/{post_id}/likes:
+    post:
+      tags: [likes]
+      summary: Поставить лайк посту
+      parameters:
+        - $ref: '#/components/parameters/PostIdPath'
+      responses:
+        '200':
+          description: Лайк успешно поставлен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Post liked
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [likes]
+      summary: Убрать лайк с поста
+      parameters:
+        - $ref: '#/components/parameters/PostIdPath'
+      responses:
+        '200':
+          description: Лайк успешно удален.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Like removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /media:
+    post:
+      tags: [media]
+      summary: Загрузка media
+      description: Загружает изображение для последующего использования в посте.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaUploadRequest'
+      responses:
+        '200':
+          description: Media успешно загружен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /media/{media_id}:
+    get:
+      tags: [media]
+      summary: Получение media
+      parameters:
+        - $ref: '#/components/parameters/MediaIdPath'
+      responses:
+        '200':
+          description: Бинарное содержимое media.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /subscriptions:
+    post:
+      tags: [subscriptions]
+      summary: Подписаться на пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '200':
+          description: Подписка успешно создана.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Subscription created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    get:
+      tags: [subscriptions]
+      summary: Чтение списка подписок текущего пользователя
+      parameters:
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Успешный ответ со списком подписок.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /subscriptions/{target_user_id}:
+    delete:
+      tags: [subscriptions]
+      summary: Отписаться от пользователя
+      parameters:
+        - $ref: '#/components/parameters/SubscriptionTargetUserIdPath'
+      responses:
+        '200':
+          description: Подписка успешно удалена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                success: true
+                message: Subscription removed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Placeholder-схема. Механика аутентификации намеренно не детализируется.
+
+  parameters:
+    Offset:
+      name: offset
+      in: query
+      required: true
+      description: Смещение для пагинации.
+      schema:
+        type: integer
+        minimum: 0
+      example: 0
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Размер страницы.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+    PopularPlaceId:
+      name: popularPlaceId
+      in: query
+      required: false
+      description: ID популярного места для альтернативной выборки ленты.
+      schema:
+        type: integer
+        minimum: 1
+    PostIdPath:
+      name: post_id
+      in: path
+      required: true
+      description: ID поста.
+      schema:
+        type: integer
+        minimum: 1
+    MediaIdPath:
+      name: media_id
+      in: path
+      required: true
+      description: ID media.
+      schema:
+        type: integer
+        minimum: 1
+    SubscriptionTargetUserIdPath:
+      name: target_user_id
+      in: path
+      required: true
+      description: ID пользователя, на которого оформлена подписка.
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    BadRequest:
+      description: Ошибка в параметрах запроса.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: BAD_REQUEST
+            message: Invalid request parameters
+    Unauthorized:
+      description: Пользователь не авторизован.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: Authentication required
+    NotFound:
+      description: Ресурс не найден.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: Resource not found
+    ValidationError:
+      description: Ошибка бизнес-валидации.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: Comment length must be <= 2500
+            details:
+              field: content
+              maxLength: 2500
+    PayloadTooLarge:
+      description: Размер загружаемого файла превышает лимит.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: PAYLOAD_TOO_LARGE
+            message: Image size must be <= 100 MB
+    UnsupportedMediaType:
+      description: Неподдерживаемый content-type.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNSUPPORTED_MEDIA_TYPE
+            message: Expected multipart/form-data
+    InternalError:
+      description: Внутренняя ошибка сервера.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INTERNAL_ERROR
+            message: Unexpected server error
+
+  schemas:
+    CreatePostRequest:
+      type: object
+      required:
+        - content
+        - mediaId
+        - geo
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Текст поста (до 500 символов).
+        mediaId:
+          type: integer
+          minimum: 1
+          description: ID ранее загруженного изображения.
+        geo:
+          type: object
+          required:
+            - lat
+            - lon
+          properties:
+            lat:
+              type: number
+              format: double
+              minimum: -90
+              maximum: 90
+            lon:
+              type: number
+              format: double
+              minimum: -180
+              maximum: 180
+
+    CreateCommentRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2500
+
+    MediaUploadRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Изображение поста (до 100 MB).
+
+    MediaUploadResponse:
+      type: object
+      required:
+        - id
+        - url
+        - mimeType
+        - sizeBytes
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 1
+
+    CreateSubscriptionRequest:
+      type: object
+      required:
+        - targetUserId
+      properties:
+        targetUserId:
+          type: integer
+          minimum: 1
+
+    SuccessResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для клиента.
+        details:
+          type: object
+          additionalProperties: true
+          description: Дополнительные детали ошибки.
+
+    PostItem:
+      type: object
+      required:
+        - id
+        - content
+        - imageUrl
+        - numberOfComments
+        - numberOfLikes
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+          description: URL изображения, полученного из ранее загруженного media.
+        numberOfComments:
+          type: integer
+          minimum: 0
+        numberOfLikes:
+          type: integer
+          minimum: 0
+
+    PostPage:
+      type: object
+      required:
+        - items
+        - nextOffset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostItem'
+        nextOffset:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          description: Следующее смещение; null, если больше данных нет.
+
+    CommentItem:
+      type: object
+      required:
+        - content
+        - authorName
+        - authorId
+      properties:
+        content:
+          type: string
+        authorName:
+          type: string
+        authorId:
+          type: integer
+          minimum: 1
+
+    CommentPage:
+      type: object
+      required:
+        - items
+        - nextOffset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentItem'
+        nextOffset:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          description: Следующее смещение; null, если больше данных нет.
+
+    SubscriptionItem:
+      type: object
+      required:
+        - userId
+        - userName
+      properties:
+        userId:
+          type: integer
+          minimum: 1
+        userName:
+          type: string
+
+    SubscriptionPage:
+      type: object
+      required:
+        - items
+        - nextOffset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionItem'
+        nextOffset:
+          oneOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          description: Следующее смещение; null, если больше данных нет.
